@@ -47,8 +47,10 @@ def location_from_seed(mappings, seed_numbers):
         return source_numbers
     else:
         source_numbers = seed_numbers
-        for mapping in mappings.keys():
-            source_numbers = execute_mapping_part2(mappings[mapping], source_numbers)
+        for nums in source_numbers:
+            for mapping in mappings.keys():
+                for item in mappings[mapping]:
+                    source_numbers = execute_mapping_part2(item, nums)
         
         return source_numbers
 
@@ -56,85 +58,54 @@ def execute_mapping_part2(mapping, source_ranges):
     new_source_numbers = {}
 
     # extract the mapping ranges to validate against
-    mapping_source_ranges = []
-    mapping_dest_ranges = []
+    mapping_source_min = mapping[1]
+    mapping_source_max = (mapping_source_min + mapping[2]) - 1
+    mapping_dest_max = (mapping[0] + mapping[2]) - 1
 
-    for item in mapping:
-        dest_range_start = item[0]
-        source_range_start = item[1]
-        range_length = item[2]
+    source_min = source_ranges[0]
+    source_max = source_ranges[1]
 
-        dest_max_value = (dest_range_start + range_length) - 1
-        source_max_value = (source_range_start + range_length) - 1
+    # checking for:
+    # [ source ]
+    #      [ target ]
+    if source_min <= mapping_source_min:
+        if source_max <= mapping_source_max:
+            if mapping_source_min <= source_max:
+                if mapping_source_max >= source_max:
+                    off_set = mapping_dest_max - mapping_source_max
+                    new_source_numbers[source_min] = mapping_source_min - 1
+                    new_source_numbers[mapping_source_min + off_set] = source_max + off_set
+                    
 
-        mapping_source_ranges.append((source_range_start, source_max_value))
-        mapping_dest_ranges.append((dest_range_start, dest_max_value))
+    # checking for:
+    #      [ source ]
+    # [ target ]
+    if source_min >= mapping_source_min:
+        if source_max >= mapping_source_max:
+            if mapping_source_max >= source_min:
+                off_set = mapping_dest_max - mapping_source_max
+                new_source_numbers[mapping_source_max] = source_max
+                new_source_numbers[source_min + off_set] = mapping_source_max + off_set
+                
 
-    altered_keys = []
+    # checking for:
+    # [    source    ]
+    #   [  target  ]
+    if mapping_source_min >= source_min:
+        if mapping_source_max <= source_max:
+            off_set = mapping_dest_max - mapping_source_max
+            new_source_numbers[source_min] = mapping_source_min - 1
+            new_source_numbers[mapping_source_min + off_set] = mapping_source_max + off_set
+            new_source_numbers[mapping_source_max + 1] = source_ranges[source_min]
+            
 
-    for i in range(len(mapping_source_ranges)):
-        mapping_source_min = mapping_source_ranges[i][0]
-        mapping_source_max = mapping_source_ranges[i][1]
-
-        for source_min in source_ranges.keys():
-            source_max = source_ranges[source_min]
-
-            # checking for:
-            # [ source ]
-            #      [ target ]
-            if source_min not in altered_keys:
-                if source_min <= mapping_source_min:
-                    if source_max <= mapping_source_max:
-                        if mapping_source_min <= source_max:
-                            if mapping_source_max >= source_max:
-                                off_set = mapping_dest_ranges[i][1] - mapping_source_max
-                                new_source_numbers[source_min] = mapping_source_min - 1
-                                new_source_numbers[mapping_source_min + off_set] = source_max + off_set
-                                altered_keys.append(source_min)
-                                continue
-
-            # checking for:
-            #      [ source ]
-            # [ target ]
-            if source_min not in altered_keys:
-                if source_min >= mapping_source_min:
-                    if source_max >= mapping_source_max:
-                        if mapping_source_max >= source_min:
-                            off_set = mapping_dest_ranges[i][1] - mapping_source_max
-                            new_source_numbers[mapping_source_max] = source_max
-                            new_source_numbers[source_min + off_set] = mapping_source_max + off_set
-                            altered_keys.append(source_min)
-                            continue
-
-            # checking for:
-            # [    source    ]
-            #   [  target  ]
-            if source_min not in altered_keys:
-                if mapping_source_min >= source_min:
-                    if mapping_source_max <= source_max:
-                        off_set = mapping_dest_ranges[i][1] - mapping_source_max
-                        new_source_numbers[source_min] = mapping_source_min - 1
-                        new_source_numbers[mapping_source_min + off_set] = mapping_source_max + off_set
-                        new_source_numbers[mapping_source_max + 1] = source_ranges[source_min]
-                        altered_keys.append(source_min)
-                        continue
-
-            # checking for:
-            #    [ source ]
-            # [    target    ]
-            if source_min not in altered_keys:
-                if source_min >= mapping_source_min:
-                    if source_max <= mapping_source_max:
-                        off_set = mapping_dest_ranges[i][1] - mapping_source_max
-                        new_source_numbers[source_min + off_set] = source_max + off_set
-                        altered_keys.append(source_min)
-                        continue
-
-            new_source_numbers[source_min] = source_ranges[source_min]
-
-    for key in altered_keys:
-        if key in new_source_numbers.keys():
-            del new_source_numbers[key]
+    # checking for:
+    #    [ source ]
+    # [    target    ]
+    if source_min >= mapping_source_min:
+        if source_max <= mapping_source_max:
+            off_set = mapping_dest_max - mapping_source_max
+            new_source_numbers[source_min + off_set] = source_max + off_set
         
     return new_source_numbers
 
@@ -214,12 +185,12 @@ def part2(inputs):
         elif inputs[i].startswith('humidity'):
             mappings[inputs[i]] = extract_map(inputs, i)
 
-    seed_range_info = {}
+    seed_range_info = []
 
     for i in range(0, len(seed_numbers) - 1, 2):       
         start = seed_numbers[i]
         range_length = seed_numbers[i + 1]
-        seed_range_info[start] = start + range_length
+        seed_range_info.append((start, (start + range_length) - 1))
 
     location_from_seed(mappings, seed_range_info)
 
